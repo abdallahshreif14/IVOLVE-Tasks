@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = "your-dockerhub-username/jenkins-app"
+        TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Clone Code') {
+            steps {
+                git 'https://github.com/Ibrahim-Adel15/Jenkins_App.git'
+            }
+        }
+
+        stage('Run Unit Test') {
+            steps {
+                sh 'npm install'
+                sh 'npm test'
+            }
+        }
+
+        stage('Build App') {
+            steps {
+                sh 'npm run build'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE:$TAG .'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh 'echo $PASS | docker login -u $USER --password-stdin'
+                    sh 'docker push $DOCKER_IMAGE:$TAG'
+                }
+            }
+        }
+
+        stage('Delete Local Image') {
+            steps {
+                sh 'docker rmi $DOCKER_IMAGE:$TAG'
+            }
+        }
+
+        stage('Update Deployment File') {
+            steps {
+                sh '''
+                sed -i "s|image: .*|image: $DOCKER_IMAGE:$TAG|g" deployment.yaml
+                '''
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'kubectl apply -f deployment.yaml'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished'
+        }
+        success {
+            echo 'Deployment successful 🎉'
+        }
+        failure {
+            echo 'Pipeline failed ❌'
+        }
+    }
+}
