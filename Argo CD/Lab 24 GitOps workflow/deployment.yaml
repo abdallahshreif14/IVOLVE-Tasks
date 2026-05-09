@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: my-app-container
-        image: abdallahshreif/jenkins-app:latest # السطر ده جينكنز هيغيره أوتوماتيك
+        image: abdallahshreif/jenkins-app:v9
         ports:
         - containerPort: 8080
 ---
